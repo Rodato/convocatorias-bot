@@ -1,6 +1,6 @@
 # Convocatorias Bot — Estudio Plural
 
-Bot que escanea diariamente ~15 fuentes de financiamiento y convocatorias, filtra por relevancia usando Claude AI, y notifica al canal `#convocatorias` de Slack.
+Bot que escanea diariamente ~15 fuentes de financiamiento y convocatorias, filtra por relevancia usando Claude AI, y se conecta con un canal de Slack para enviar las notificaciones.
 
 ## Setup
 
@@ -17,7 +17,7 @@ pip3 install -r requirements.txt
 1. Ir a [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From scratch**
 2. Nombre: `Convocatorias Bot` | Workspace: el de Estudio Plural
 3. En el menú lateral: **Features → Incoming Webhooks** → activar el toggle
-4. Click en **Add New Webhook to Workspace** → seleccionar el canal `#convocatorias`
+4. Click en **Add New Webhook to Workspace** → seleccionar el canal donde quieres recibir las notificaciones
 5. Copiar la URL generada (formato: `https://hooks.slack.com/services/T.../B.../...`)
 
 ### 3. Configurar variables de entorno
@@ -35,7 +35,7 @@ cp .env.example .env
 python3 src/main.py
 ```
 
-Verifica que llegue un mensaje a `#convocatorias`. En el segundo run, las mismas URLs no deben re-enviarse (gracias a `data/seen.json`).
+Verifica que llegue un mensaje al canal configurado. En el segundo run, las mismas URLs no deben re-enviarse (gracias a `data/seen.json`).
 
 ---
 
