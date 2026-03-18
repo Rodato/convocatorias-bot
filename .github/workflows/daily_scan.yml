@@ -1,0 +1,38 @@
+name: Daily Convocatorias Scan
+
+on:
+  schedule:
+    - cron: '0 13 * * *'   # 8:00am Colombia (UTC-5)
+  workflow_dispatch:         # Manual trigger for testing
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # Required to commit seen.json
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run bot
+        run: python3 src/main.py
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Commit updated seen.json
+        run: |
+          git config user.email "bot@estudio-plural.co"
+          git config user.name "Convocatorias Bot"
+          git add data/seen.json
+          git diff --staged --quiet || git commit -m "chore: update seen opportunities [skip ci]"
+          git push

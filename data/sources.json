@@ -1,0 +1,77 @@
+[
+  {
+    "name": "UN Partner Portal",
+    "url": "https://www.unpartnerportal.org/landing/opportunities/",
+    "type": "html"
+  },
+  {
+    "name": "UNDP Colombia",
+    "url": "https://www.undp.org/es/colombia/adquisiciones",
+    "type": "html"
+  },
+  {
+    "name": "CEPF Grants",
+    "url": "https://www.cepf.net/grants/open-calls-for-proposals/2025-best-practices-for-empowerment-of-women",
+    "type": "html"
+  },
+  {
+    "name": "GIZ Colombia",
+    "url": "https://www.giz.de/en/colombia-espanol/tenders",
+    "type": "html"
+  },
+  {
+    "name": "UNICEF Colombia",
+    "url": "https://www.unicef.org/colombia/convocatorias-para-empresas",
+    "type": "html"
+  },
+  {
+    "name": "Banco Mundial Colombia",
+    "url": "https://projects.bancomundial.org/es/projects-operations/procurement?countrycode_exact=CO&srce=both&title=Colombia",
+    "type": "html"
+  },
+  {
+    "name": "IDRC Funding",
+    "url": "https://idrc-crdi.ca/en/funding/applying",
+    "type": "html"
+  },
+  {
+    "name": "IKI Small Grants",
+    "url": "https://iki-small-grants.de/",
+    "type": "html"
+  },
+  {
+    "name": "APC Colombia",
+    "url": "https://portalservicios-apccolombia.gov.co/publicaI/Convocatoria?IS_ACTIVE=1",
+    "type": "html"
+  },
+  {
+    "name": "Grand Challenges",
+    "url": "https://gcgh.grandchallenges.org/grant-opportunities",
+    "type": "html"
+  },
+  {
+    "name": "Open Society Foundations",
+    "url": "https://www.opensocietyfoundations.org/grants",
+    "type": "html"
+  },
+  {
+    "name": "Patrimonio Natural",
+    "url": "https://www.patrimonionatural.org.co/convocatorias/",
+    "type": "html"
+  },
+  {
+    "name": "Red ADELCO",
+    "url": "https://redadelco.org/convocatorias-habilitadas/",
+    "type": "html"
+  },
+  {
+    "name": "Gates Foundation",
+    "url": "https://submit.gatesfoundation.org/",
+    "type": "html"
+  },
+  {
+    "name": "Impact Funding Substack",
+    "url": "https://impactfunding.substack.com/",
+    "type": "html"
+  }
+]
