@@ -58,8 +58,10 @@ main.py
   3. Filtra URLs ya en data/seen.json
   4. analyzer.py: envía a OpenRouter en batches de 20
         System prompt: ORG_PROFILE + KEYWORDS (config.py)
-        Respuesta esperada: JSON [{url, title, reason}]
+        Respuesta esperada: JSON [{url, title, reason, deadline, funding_amount, eligibility, experience_years, themes}]
+        max_tokens: 4096 (ampliado para acomodar campos nuevos)
   5. notifier.py: POST al webhook de Slack (Block Kit)
+        Campos mostrados: título, fuente, relevancia + deadline, monto, elegibilidad, experiencia, temáticas (si no son null)
         0 relevantes → mensaje "Sin nuevas convocatorias hoy"
   6. Actualiza data/seen.json con TODAS las URLs scrapeadas (no solo las relevantes)
 ```

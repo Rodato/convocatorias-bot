@@ -3,6 +3,7 @@ scraper.py — Fetches and parses opportunities from each source URL.
 Returns a list of {title, url, description, source_name, date_found} dicts.
 """
 import logging
+import re
 from datetime import date
 from typing import Optional
 from urllib.parse import urljoin
@@ -116,6 +117,41 @@ def _extract_opportunities(soup: BeautifulSoup, base_url: str, source_name: str)
 
     logger.info("Extracted %d opportunities from %s", len(results), source_name)
     return results[:30]  # cap per source to avoid noise
+
+
+def fetch_detail(url: str) -> tuple[str, Optional[str]]:
+    """
+    Fetch a detail page and return (main_text, better_url).
+
+    main_text: up to 3000 chars of the page's main content.
+    better_url: a more specific application/opportunity link found on the page, or None.
+    """
+    soup = _fetch(url)
+    if soup is None:
+        return "", None
+
+    # Try to find a more specific application link before stripping the DOM
+    apply_keywords = [
+        "apply", "aplicar", "postular", "application", "solicitud",
+        "convocatoria", "register", "registrar", "submit", "inscripción",
+    ]
+    better_url = None
+    for a in soup.find_all("a", href=True):
+        link_text = a.get_text(strip=True).lower()
+        href = urljoin(url, a["href"])
+        if href == url:
+            continue
+        if any(kw in link_text for kw in apply_keywords):
+            better_url = href
+            break
+
+    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+        tag.decompose()
+
+    main = soup.find(["article", "main"]) or soup.find("body")
+    text = main.get_text(separator=" ", strip=True) if main else soup.get_text(separator=" ", strip=True)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:3000], better_url
 
 
 def scrape_source(source: dict) -> list[dict]:

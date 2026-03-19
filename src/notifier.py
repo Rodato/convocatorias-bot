@@ -16,14 +16,35 @@ def _build_block(opp: dict) -> dict:
     reason = opp.get("reason", "")
     url = opp.get("url", "")
 
-    text = (
-        f"🔍 *Nueva Convocatoria*\n"
-        f"*Título:* {title}\n"
-        f"*Fuente:* {source}\n"
-        f"*Por qué es relevante:* {reason}\n"
-        f"🔗 <{url}|Ver más>"
-    )
-    return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+    lines = [
+        f"*{title}*",
+        f"*Fuente:* {source}",
+        f"*Relevancia:* {reason}",
+    ]
+
+    deadline = opp.get("deadline")
+    if deadline:
+        lines.append(f"📅 *Deadline:* {deadline}")
+
+    funding = opp.get("funding_amount")
+    if funding:
+        lines.append(f"💰 *Monto:* {funding}")
+
+    eligibility = opp.get("eligibility")
+    if eligibility:
+        lines.append(f"📋 *Elegibilidad:* {eligibility}")
+
+    experience = opp.get("experience_years")
+    if experience:
+        lines.append(f"🏅 *Experiencia requerida:* {experience}")
+
+    themes = opp.get("themes")
+    if themes and isinstance(themes, list) and len(themes) > 0:
+        lines.append(f"🏷️ *Temáticas:* {', '.join(themes)}")
+
+    lines.append(f"🔗 <{url}|Ver convocatoria completa>")
+
+    return {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}}
 
 
 def _divider() -> dict:

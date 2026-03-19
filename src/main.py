@@ -23,9 +23,9 @@ from dotenv import load_dotenv
 
 load_dotenv(ROOT / ".env")
 
-from src.analyzer import filter_relevant
+from src.analyzer import enrich_details, filter_relevant
 from src.notifier import send_to_slack
-from src.scraper import scrape_source
+from src.scraper import fetch_detail, scrape_source
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,6 +76,29 @@ def main() -> None:
     if new_opportunities:
         relevant = filter_relevant(new_opportunities)
     logger.info("Relevant after Claude filter: %d", len(relevant))
+
+    # 4b. Fetch detail pages and enrich with structured fields
+    if relevant:
+        logger.info("Fetching detail pages for %d relevant opportunities...", len(relevant))
+        for opp in relevant:
+            detail_text, better_url = fetch_detail(opp["url"])
+            opp["detail_text"] = detail_text
+            if better_url:
+                logger.info("Found more specific URL for '%s': %s", opp.get("title", ""), better_url)
+                opp["url"] = better_url
+        relevant = enrich_details(relevant)
+        before = len(relevant)
+        # Remove general program pages (no active call)
+        relevant = [opp for opp in relevant if opp.get("is_open_call", True)]
+        filtered = before - len(relevant)
+        if filtered:
+            logger.info("Removed %d general program page(s) (is_open_call=false)", filtered)
+        # Remove opportunities whose deadline is already past or within 7 days (caught in detail pass)
+        before = len(relevant)
+        relevant = [opp for opp in relevant if "(VENCIDA)" not in (opp.get("deadline") or "")]
+        expired = before - len(relevant)
+        if expired:
+            logger.info("Removed %d expired opportunity/ies (VENCIDA in deadline field)", expired)
 
     # 5. Notify Slack
     send_to_slack(relevant)
