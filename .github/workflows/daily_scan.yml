@@ -8,8 +8,6 @@ on:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write         # Required to commit seen.json
 
     steps:
       - name: Checkout repository
@@ -28,11 +26,14 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
-      - name: Commit updated seen.json
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          git config user.email "bot@estudio-plural.co"
-          git config user.name "Convocatorias Bot"
-          git add data/seen.json
-          git diff --staged --quiet || git commit -m "chore: update seen opportunities [skip ci]"
-          git push
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            --data "{\"text\":\"🚨 *Convocatorias bot falló* — revisar GitHub Actions: $RUN_URL\"}" \
+            "$SLACK_WEBHOOK_URL"

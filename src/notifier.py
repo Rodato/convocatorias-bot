@@ -3,10 +3,39 @@ notifier.py — Sends relevant opportunities to Slack via Incoming Webhook.
 """
 import logging
 import os
+from datetime import date, datetime
+from typing import Optional
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def _format_deadline(opp: dict) -> str:
+    """Prefer parsed deadline_iso (YYYY-MM-DD with days-left). Fallback to original string."""
+    deadline_iso: Optional[str] = opp.get("deadline_iso")
+    deadline_raw: Optional[str] = opp.get("deadline")
+
+    if deadline_iso == "rolling":
+        return "Convocatoria permanente (sin fecha límite fija)"
+
+    if deadline_iso:
+        try:
+            d = datetime.strptime(deadline_iso, "%Y-%m-%d").date()
+            days_left = (d - date.today()).days
+            if days_left < 0:
+                suffix = "VENCIDA"
+            elif days_left == 0:
+                suffix = "vence hoy"
+            elif days_left == 1:
+                suffix = "vence mañana"
+            else:
+                suffix = f"en {days_left} días"
+            return f"{deadline_iso} ({suffix})"
+        except (ValueError, TypeError):
+            pass
+
+    return deadline_raw or "No especificada"
 
 
 def _build_block(opp: dict) -> dict:
@@ -22,9 +51,7 @@ def _build_block(opp: dict) -> dict:
         f"*Relevancia:* {reason}",
     ]
 
-    deadline = opp.get("deadline")
-    if deadline:
-        lines.append(f"📅 *Deadline:* {deadline}")
+    lines.append(f"📅 *Fecha límite:* {_format_deadline(opp)}")
 
     funding = opp.get("funding_amount")
     if funding:
@@ -51,10 +78,15 @@ def _divider() -> dict:
     return {"type": "divider"}
 
 
+# Slack hard cap is 50 blocks per message. Each opp = 1 divider + 1 section = 2 blocks,
+# plus a header. 23 opps → 1 + 23*2 = 47 blocks fits comfortably.
+OPPS_PER_MESSAGE = 23
+
+
 def send_to_slack(opportunities: list[dict]) -> None:
     """
-    POST a Slack message for each opportunity.
-    If the list is empty, sends a daily summary saying no new opportunities were found.
+    POST opportunities to Slack via webhook. If the list is empty,
+    sends a "no new opportunities today" summary.
     """
     webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
     if not webhook_url:
@@ -62,48 +94,26 @@ def send_to_slack(opportunities: list[dict]) -> None:
         return
 
     if not opportunities:
-        payload = {
+        _post(webhook_url, {
             "text": "📭 *Resumen diario — Convocatorias*\nSin nuevas convocatorias relevantes hoy."
-        }
-        _post(webhook_url, payload)
+        })
         return
 
-    # Send in one message with blocks (up to 50 blocks; split if needed)
-    blocks = [
-        {
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": f"🗓️ Convocatorias del día — {len(opportunities)} nueva(s)",
-            },
-        }
-    ]
-    for opp in opportunities:
-        blocks.append(_divider())
-        blocks.append(_build_block(opp))
+    total = len(opportunities)
+    for start in range(0, total, OPPS_PER_MESSAGE):
+        chunk = opportunities[start : start + OPPS_PER_MESSAGE]
+        if total <= OPPS_PER_MESSAGE:
+            header_text = f"🗓️ Convocatorias del día — {total} nueva(s)"
+        else:
+            header_text = f"🗓️ Convocatorias ({start + 1}–{start + len(chunk)} de {total})"
 
-    # Slack allows max 50 blocks per message; send in chunks if needed
-    MAX_BLOCKS = 48  # leave room for header + trailing divider
-    if len(blocks) <= MAX_BLOCKS:
+        blocks: list[dict] = [
+            {"type": "header", "text": {"type": "plain_text", "text": header_text}}
+        ]
+        for opp in chunk:
+            blocks.append(_divider())
+            blocks.append(_build_block(opp))
         _post(webhook_url, {"blocks": blocks})
-    else:
-        # Split into multiple messages
-        chunk_size = MAX_BLOCKS - 1  # -1 for header
-        for i in range(0, len(opportunities), chunk_size // 2):
-            chunk = opportunities[i : i + chunk_size // 2]
-            chunk_blocks = [
-                {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": f"🗓️ Convocatorias ({i + 1}–{i + len(chunk)} de {len(opportunities)})",
-                    },
-                }
-            ]
-            for opp in chunk:
-                chunk_blocks.append(_divider())
-                chunk_blocks.append(_build_block(opp))
-            _post(webhook_url, {"blocks": chunk_blocks})
 
 
 def _post(webhook_url: str, payload: dict) -> None:
