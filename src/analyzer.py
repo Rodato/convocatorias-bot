@@ -31,7 +31,7 @@ ENRICH_MODEL = "anthropic/claude-sonnet-4.6"
 ENRICH_WORKERS = 6
 TODAY = date.today().isoformat()
 DEADLINE_GRACE_DAYS = 7
-HTML_MAX_CHARS = 8000
+HTML_MAX_CHARS = 20000
 
 _client: Optional[OpenAI] = None
 
@@ -50,17 +50,28 @@ def _get_client() -> OpenAI:
 
 EXTRACT_PROMPT = """Eres un asistente que extrae convocatorias / llamados a propuestas / licitaciones individuales de páginas web.
 
-Reglas estrictas:
-- Devuelve SOLO llamados específicos a postularse a algo (consultorías, licitaciones, becas, fondos, RFPs, llamados a propuestas, términos de referencia).
-- NO incluyas: navegación, menús, footer, redes sociales, paginación, "Convocatorias cerradas", premios pasados, páginas institucionales ("Nuestra historia", "Misión", "Quiénes somos"), blog posts, eventos pasados, formularios de contacto.
-- NO incluyas la URL de la página misma ni variantes (con/sin slash, con #anchor o ?query).
-- Si la página tiene UNA sola convocatoria detallada (es la página de detalle), devuelve solo ese item.
-- Cada URL debe estar PRESENTE en el contenido que recibiste — no inventar URLs.
+Te llega: la URL de la página, su nombre fuente, y el contenido limpio (con links como [texto](url)).
+
+Reglas:
+1. Devuelve SOLO llamados específicos a postularse a algo (consultorías, licitaciones, becas, fondos, RFPs, llamados a propuestas, términos de referencia, tenders, grants, ofertas de servicios).
+
+2. EXCLUYE: navegación/menús/footer, redes sociales, paginación, "Convocatorias cerradas", premios pasados, páginas institucionales ("Nuestra historia", "Misión", "Quiénes somos"), blog posts, eventos pasados, formularios de contacto, links a la home, links a páginas de "cómo aplicar" genéricas.
+
+3. Si la página es un LISTING (lista varias convocatorias), devuelve cada una con su URL específica. NO incluyas la URL de la página listing misma.
+
+4. Si la página es DETALLE de UNA convocatoria (describe UNA sola con criterios, alcance, deadline, etc.), devuelve EXACTAMENTE UN item usando la URL de la página tal como te llegó.
+
+5. Si la página es info general/institucional/cómo-aplicar SIN convocatoria activa concreta, devuelve {"items": []}.
+
+6. Cada URL debe estar PRESENTE en el contenido que recibiste, EXCEPTO en el caso (4) donde puedes usar la URL de la página misma. No inventes URLs.
+
+7. El campo `brief` es opcional: 1 línea con descripción si la encontrás, o null.
+
+8. ANTE LA DUDA, INCLUYE. Si un item podría ser una convocatoria (aunque el título sea ambiguo, sin descripción, o no esté 100% claro si es llamado activo), inclúyelo. Es mejor incluir de más y dejar que el filtro posterior decida, que perder oportunidades. Solo excluye lo que CLARAMENTE no es un llamado a postularse (menús, footer, redes sociales, páginas obviamente institucionales).
 
 Devuelve JSON:
-{"items": [{"title": "título exacto del llamado", "url": "https://...", "brief": "1 línea con resumen si está disponible, o null"}]}
+{"items": [{"title": "título exacto del llamado", "url": "https://...", "brief": "1 línea o null"}]}
 
-Si no hay convocatorias activas, devuelve {"items": []}.
 No incluyas texto adicional fuera del JSON."""
 
 
@@ -206,6 +217,7 @@ def extract_opportunities_llm(
     cleaned = _clean_html_for_llm(html)
     if not cleaned:
         return []
+    logger.debug("Cleaned HTML for %s: %d chars (raw: %d)", source_name, len(cleaned), len(html))
 
     user_msg = (
         f"URL de la página: {source_url}\n"
@@ -236,6 +248,7 @@ def extract_opportunities_llm(
     today = date.today().isoformat()
     valid: list[dict] = []
     seen_urls: set[str] = set()
+    multi_item = len(items) > 1  # listing case → drop self-URL; single → keep it
 
     for item in items:
         if not isinstance(item, dict):
@@ -247,9 +260,11 @@ def extract_opportunities_llm(
             continue
 
         url = urljoin(source_url, url)
-        if _normalize_url(url) == source_url_norm:
+        is_self = _normalize_url(url) == source_url_norm
+        if is_self and multi_item:
+            # listing page that also returned itself — drop the self-link
             continue
-        if not _url_in_html(url, html):
+        if not is_self and not _url_in_html(url, html):
             logger.warning("Hallucinated URL %s in extraction from %s, skipping", url, source_name)
             continue
         if url in seen_urls:
@@ -264,7 +279,7 @@ def extract_opportunities_llm(
             "date_found": today,
         })
 
-    logger.info("LLM extracted %d items from %s", len(valid), source_name)
+    logger.info("LLM extracted %d items from %s (cleaned HTML: %d chars)", len(valid), source_name, len(cleaned))
     return valid
 
 
