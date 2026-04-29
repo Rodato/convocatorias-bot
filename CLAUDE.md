@@ -145,21 +145,21 @@ Sources JS-heavy o anti-bot devuelven 0 → caen en source-URL fallback (la enri
 
 | Fuente | Estado | Notas |
 |---|---|---|
-| Patrimonio Natural | ✅ OK | LLM extrae todos los items con títulos reales |
-| Red ADELCO | ✅ OK | LLM extrae 3 convocatorias limpias |
-| CEPF Grants | ⚠️ 0 LLM items | URL específica de un call; cae en source URL fallback |
-| GIZ Colombia | ⚠️ 0 LLM items | Hub estático, layout complejo |
-| Banco Mundial Colombia | ⚠️ 0 LLM items | Hub con filtros JS |
-| Open Society Foundations | ⚠️ 0 LLM items | Hub con filtros |
-| Grand Challenges | ⚠️ 0 LLM items | Hub estático |
-| UN Partner Portal | ⚠️ 0 LLM items | SPA, content por JS |
-| UNICEF Colombia | ⚠️ 0 LLM items | A veces 403 anti-bot |
-| IKI Small Grants | ⚠️ 0 LLM items | Posts de info sessions, no listado real |
-| Gates Foundation | ⚠️ 0 LLM items | SPA, requiere render JS |
-| Impact Funding Substack | ⚠️ 0 LLM items | Requiere suscripción |
-| IDRC Funding | ✅ Correcto | Página "applying" general → enrichment marca como general_info y descarta |
-| UNDP Colombia | ❌ 403 | Anti-bot, requiere Playwright o sesión |
+| Patrimonio Natural | ✅ OK | LLM extrae 12+ items con títulos reales |
+| Red ADELCO | ✅ OK | LLM extrae 3 convocatorias limpias (incluye VBG con regla "ante la duda") |
+| CEPF Grants | ✅ OK | URL específica de un call → LLM devuelve case 4 (source URL como item) |
+| IDRC Funding | ✅ OK | Página "applying" → enrichment clasifica como general_info y descarta |
+| Grand Challenges | ✅ OK | Realmente vacío ahora ("no open Grant Opportunities at this time") |
+| Open Society Foundations | ✅ OK | Realmente vacío ("0 Grants" en filtros activos) |
+| GIZ Colombia | ⚠️ Tender PDF | LLM ignora links a PDFs; única licitación vence en 5 días → grace window igual la dropea |
+| IKI Small Grants | ⚠️ Posts de info sessions | No listado real de convocatorias |
+| Banco Mundial Colombia | ❌ JS render | Listings se cargan por JS — necesita Fase B (Playwright) |
+| UN Partner Portal | ❌ JS render | SPA — necesita Fase B |
+| Gates Foundation | ❌ JS render | SPA — necesita Fase B |
+| UNICEF Colombia | ❌ 403 / JS | Anti-bot; necesita Fase B con headers + render |
+| UNDP Colombia | ❌ 403 | Anti-bot, posiblemente Playwright lo pase |
 | APC Colombia | ❌ 503 | Servidor inestable |
+| Impact Funding Substack | ❌ Login | Sin solución sin auth |
 
 **Fuentes omitidas en v1** (requieren login): BEO IDB, SECOP, DIAN Fondo.
 
@@ -209,5 +209,7 @@ ENRICH_MODEL  = "anthropic/claude-sonnet-4.6"  # extracción de campos estructur
 - ✅ Storage bug fixed (`save_new_opportunities` solo escribe URLs nuevas).
 - ✅ Notificación Slack en falla del workflow.
 - ✅ requirements.txt pineado.
-- ⚠️ Hub-JS sources no extraen items individuales — requieren Playwright o per-source selectors.
-- ⚠️ MongoDB tiene historial sucio del primer run con BS4 — no afecta output (rel=False).
+- ✅ **Fase A** (HTML max 20K + prompt "ante la duda incluye" + case 4 self-URL) — recuperó CEPF y VBG.
+- ✅ MongoDB reseteado el 2026-04-29 (220 docs borrados); próximo run scrapea fresh.
+- 🔜 **Fase B (Playwright)** pendiente — recuperaría Banco Mundial, UN Partner Portal, Gates Foundation, posiblemente UNDP/UNICEF.
+- 🔜 **Human-in-the-loop con Yeison** — usar feedback en Slack para refinar prompts/keywords/sources (él es el experto en formulación).
